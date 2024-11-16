@@ -15,6 +15,8 @@ private:
 	int score;
 	/* The function that takes in all the data from the curl perform and stores it in the questions vector */
 	static size_t readQuiz(char* data, size_t size, size_t nmemb, void* readData);
+	/* Resets the questions vector to fill it with new questions upon quiz replay */
+	void resetQuestions();
 
 public:
 	/* A collection of the trivia questions in the current version of the quiz */
@@ -64,7 +66,7 @@ public:
 	void generateQuiz();
 
 	/* Returns a string representing the current question */
-	std::string displayQuestion();
+	std::wstring displayQuestion();
 
 	/* Checks if the index of the option chosen by the user is the correct answer for the question */
 	bool checkAnswer(int answer);

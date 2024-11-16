@@ -9,9 +9,9 @@ class Question
 {
 public:
 	// The trivia question being asked
-	std::string question;
+	std::wstring question;
 	// All the answers for a trivia question
-	std::vector<std::string> options;
+	std::vector<std::wstring> options;
 	// The correct answer
 	int correctAnswer;
 };

@@ -6,6 +6,7 @@
 #include <time.h>
 #include <vector>
 #include <curl/curl.h>
+#include <cwchar>
 #include "quiz.hpp"
 
 // The portion of the api that is always the same, regardless of category
@@ -15,6 +16,8 @@ struct memory {
 	char* response;
 	size_t size;
 };
+
+struct memory chunk = { nullptr, 0 };
 
 std::vector<Question*> Quiz::questions = { new Question(), new Question(), new Question(),
 											new Question(), new Question(), new Question(),
@@ -26,7 +29,18 @@ size_t Quiz::readQuiz(char* data, size_t size, size_t nmemb, void* readData)
 	size_t realsize = size * nmemb;
 	struct memory* mem = (struct memory*)readData;
 
-	char* ptr = (char*)realloc(mem->response, mem->size + realsize + 1);
+	//std::cout << "readData pointer: " << readData << std::endl;
+	//std::cout << "size: " << size << std::endl;
+	//std::cout << "nmemb: " << nmemb << std::endl;
+	//std::cout << "mem->size: " << mem->size << std::endl;
+	//std::cout << "readData size: " << sizeof(readData) << std::endl;
+	//std::cout << "mem size: " << sizeof(mem) << std::endl;
+	//std::cout << "realsize: " << realsize << std::endl;
+	//std::cout << mem->size + realsize + 1 << std::endl;
+	//std::cout << mem->response << std::endl;
+
+
+	char* ptr = (char *)realloc(mem->response, mem->size + realsize + 1);
 	if (!ptr) {
 		return 0;  /* out of memory */
 	}
@@ -54,49 +68,68 @@ size_t Quiz::readQuiz(char* data, size_t size, size_t nmemb, void* readData)
 	* "correct_answer":"Sodium","incorrect_answers":["Carbon","Lead","Nitrogen"]}]}
 	*/
 	for (int i = 0; i < 10; i++) {
+		std::wstring findstring = L"\"question\"";
 		int questionStart = quizData.find("\"question\"");
-		if (questionStart == std::string::npos) {
+		if (questionStart == std::wstring::npos) {
 			std::cerr << "bad data" << std::endl;
 			exit(1);
 		}
 		quizData.erase(0, questionStart + 12);	// Erases up to and including the opening quotation for the question title
 		int answerStart = quizData.find(",\"correct_answer\"");
-		std::string question(quizData.begin(), quizData.begin() + answerStart - 1);
+		std::wstring question(quizData.begin(), quizData.begin() + answerStart - 1);
 
 		quizData.erase(0, answerStart + 19);	// Erases up to and including the opening quotation mark for the correct answer
 		int incorrectStart = quizData.find(",\"incorrect_answers\"");
-		std::string correctAnswer(quizData.begin(), quizData.begin() + incorrectStart - 1);
+		std::wstring correctAnswer(quizData.begin(), quizData.begin() + incorrectStart - 1);
 
 		quizData.erase(0, incorrectStart + 23);	// Erases up to and including the open quotation for the first incorrect answer
 		int nextAnswer = quizData.find("\",\"");
-		std::string incorrectOne(quizData.begin(), quizData.begin() + nextAnswer);
+		std::wstring incorrectOne(quizData.begin(), quizData.begin() + nextAnswer);
 
 		quizData.erase(0, nextAnswer + 3);	// Erases up to the start of the next incorrect answer
 		nextAnswer = quizData.find("\",\"");
-		std::string incorrectTwo(quizData.begin(), quizData.begin() + nextAnswer);
+		std::wstring incorrectTwo(quizData.begin(), quizData.begin() + nextAnswer);
 
 		quizData.erase(0, nextAnswer + 3);	// Erases up to start of the next incorrect answer
 		int questionEnd = quizData.find("\"]}");
-		std::string incorrectThree(quizData.begin(), quizData.begin() + questionEnd);
+		std::wstring incorrectThree(quizData.begin(), quizData.begin() + questionEnd);
 
 		// Add the strings into the current question
 		questions.at(i)->question = question;
 
 		// Genereate randomm number to use to shuffle the answer order
-		srand(time(NULL));
 		int shuffler = rand() % 4;
 
 		// Temporary vector used for copying the various strings into the actual questions vector
-		std::vector<std::string> temp = { correctAnswer, incorrectOne, incorrectTwo, incorrectThree };
+		std::vector<std::wstring> temp = { correctAnswer, incorrectOne, incorrectTwo, incorrectThree };
 
 		// Put the answers in the options array but in a shuffled order
 		questions.at(i)->options.push_back(temp.at(shuffler % 4));
-		questions.at(i)->correctAnswer = shuffler % 4;
 		questions.at(i)->options.push_back(temp.at((1 + shuffler) % 4));
 		questions.at(i)->options.push_back(temp.at((2 + shuffler) % 4));;
 		questions.at(i)->options.push_back(temp.at((3 + shuffler) % 4));
+
+		// Find where the correct answer is supposed to go
+		if (shuffler % 4 == 0) {
+			questions.at(i)->correctAnswer = 0;
+		}
+		else if ((1 + shuffler) % 4 == 0) {
+			questions.at(i)->correctAnswer = 1;
+		}
+		else if ((2 + shuffler) % 4 == 0) {
+			questions.at(i)->correctAnswer = 2;
+		}
+		else {
+			questions.at(i)->correctAnswer = 3;
+		}
 	}
 	return realsize;
+}
+
+void Quiz::resetQuestions()
+{
+	questions = { new Question(), new Question(), new Question(), new Question(), new Question(),
+				  new Question(), new Question(), new Question(), new Question(), new Question(), };
 }
 
 void Quiz::initQuiz()
@@ -106,9 +139,12 @@ void Quiz::initQuiz()
 		std::cerr << "could not make quiz." << std::endl;
 		exit(1);
 	}
-	struct memory chunk = { 0 };
+	//struct memory* chunk = (struct memory*)malloc(sizeof(struct memory));
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&chunk);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &Quiz::readQuiz);
+
+	// Set the random seed to be used to shuffle question answers
+	srand(time(NULL));
 
 	//for (int i = 0; i < 10; i++) {
 	//	questions.at(i)->options = { "", "", "", "" };
@@ -117,16 +153,23 @@ void Quiz::initQuiz()
 
 void Quiz::selectCategory(CATEGORY cat)
 {
-	curl_easy_setopt(curl, CURLOPT_URL, (quizString + std::to_string(cat) + "&type=multiple").c_str());
+	curl_easy_setopt(curl, CURLOPT_URL, (quizString + std::to_string(cat) + "&type=multiple&encode=url3986").c_str());
 }
 
 void Quiz::selectCategory(int cat)
 {
+	//std::string url = quizString + std::to_string(cat) + "&type=multiple";
+	//std::cout << url << std::endl;
 	curl_easy_setopt(curl, CURLOPT_URL, (quizString + std::to_string(cat) + "&type=multiple").c_str());
 }
 
 void Quiz::generateQuiz()
 {
+	// Make sure to empty the questions vector if it had contents before this
+	resetQuestions();
+	// Reset the pointer in which the trivia data is placed
+	chunk = { nullptr, 0 };
+
 	CURLcode res;
 	res = curl_easy_perform(curl);
 	if (res != CURLE_OK) {
@@ -140,23 +183,24 @@ void Quiz::generateQuiz()
 	score = 0;
 }
 
-std::string Quiz::displayQuestion()
+std::wstring Quiz::displayQuestion()
 {
-	std::string ret = questions.at(currentQuestion)->question + "\n";
-	ret += "[1] " + questions.at(currentQuestion)->options.at(0) + "\n";
-	ret += "[2] " + questions.at(currentQuestion)->options.at(1) + "\n";
-	ret += "[3] " + questions.at(currentQuestion)->options.at(2) + "\n";
-	ret += "[4] " + questions.at(currentQuestion)->options.at(3) + "\n";
+	std::wstring ret = questions.at(currentQuestion)->question + L"\n";
+	ret += L"[1] " + questions.at(currentQuestion)->options.at(0) + L"\n";
+	ret += L"[2] " + questions.at(currentQuestion)->options.at(1) + L"\n";
+	ret += L"[3] " + questions.at(currentQuestion)->options.at(2) + L"\n";
+	ret += L"[4] " + questions.at(currentQuestion)->options.at(3) + L"\n";
 	return ret;
 }
 
 bool Quiz::checkAnswer(int answer)
 {
-	currentQuestion++;
-	if (answer == questions.at(currentQuestion)->correctAnswer) {
+	if (answer - 1 == questions.at(currentQuestion)->correctAnswer) {
 		score++;
+		currentQuestion++;
 		return true;
 	}
+	currentQuestion++;
 	return false;
 }
 
