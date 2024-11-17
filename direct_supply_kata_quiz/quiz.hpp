@@ -66,7 +66,7 @@ public:
 	void generateQuiz();
 
 	/* Returns a string representing the current question */
-	std::wstring displayQuestion();
+	std::string displayQuestion();
 
 	/* Checks if the index of the option chosen by the user is the correct answer for the question */
 	bool checkAnswer(int answer);

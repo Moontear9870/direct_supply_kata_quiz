@@ -7,7 +7,9 @@
 #include <vector>
 #include <curl/curl.h>
 #include <cwchar>
+#include <algorithm>
 #include "quiz.hpp"
+#include "base64.cpp"
 
 // The portion of the api that is always the same, regardless of category
 std::string quizString = "https://opentdb.com/api.php?amount=10&category=";
@@ -68,31 +70,40 @@ size_t Quiz::readQuiz(char* data, size_t size, size_t nmemb, void* readData)
 	* "correct_answer":"Sodium","incorrect_answers":["Carbon","Lead","Nitrogen"]}]}
 	*/
 	for (int i = 0; i < 10; i++) {
-		std::wstring findstring = L"\"question\"";
 		int questionStart = quizData.find("\"question\"");
-		if (questionStart == std::wstring::npos) {
+		if (questionStart == std::string::npos) {
 			std::cerr << "bad data" << std::endl;
 			exit(1);
 		}
 		quizData.erase(0, questionStart + 12);	// Erases up to and including the opening quotation for the question title
 		int answerStart = quizData.find(",\"correct_answer\"");
-		std::wstring question(quizData.begin(), quizData.begin() + answerStart - 1);
+		std::string encodedQuestion(quizData.begin(), quizData.begin() + answerStart - 1);
+		encodedQuestion.erase(std::remove(encodedQuestion.begin(), encodedQuestion.end(), '\\'), encodedQuestion.end());
+		std::string question = base64_decode(encodedQuestion);
 
 		quizData.erase(0, answerStart + 19);	// Erases up to and including the opening quotation mark for the correct answer
 		int incorrectStart = quizData.find(",\"incorrect_answers\"");
-		std::wstring correctAnswer(quizData.begin(), quizData.begin() + incorrectStart - 1);
+		std::string encodedCorrect(quizData.begin(), quizData.begin() + incorrectStart - 1);
+		encodedCorrect.erase(std::remove(encodedCorrect.begin(), encodedCorrect.end(), '\\'), encodedCorrect.end());
+		std::string correctAnswer = base64_decode(encodedCorrect);
 
 		quizData.erase(0, incorrectStart + 23);	// Erases up to and including the open quotation for the first incorrect answer
 		int nextAnswer = quizData.find("\",\"");
-		std::wstring incorrectOne(quizData.begin(), quizData.begin() + nextAnswer);
+		std::string encodedOne(quizData.begin(), quizData.begin() + nextAnswer);
+		encodedOne.erase(std::remove(encodedOne.begin(), encodedOne.end(), '\\'), encodedOne.end());
+		std::string incorrectOne = base64_decode(encodedOne);
 
 		quizData.erase(0, nextAnswer + 3);	// Erases up to the start of the next incorrect answer
 		nextAnswer = quizData.find("\",\"");
-		std::wstring incorrectTwo(quizData.begin(), quizData.begin() + nextAnswer);
+		std::string encodedTwo(quizData.begin(), quizData.begin() + nextAnswer);
+		encodedTwo.erase(std::remove(encodedTwo.begin(), encodedTwo.end(), '\\'), encodedTwo.end());
+		std::string incorrectTwo = base64_decode(encodedTwo);
 
 		quizData.erase(0, nextAnswer + 3);	// Erases up to start of the next incorrect answer
 		int questionEnd = quizData.find("\"]}");
-		std::wstring incorrectThree(quizData.begin(), quizData.begin() + questionEnd);
+		std::string encodedThree(quizData.begin(), quizData.begin() + questionEnd);
+		encodedThree.erase(std::remove(encodedThree.begin(), encodedThree.end(), '\\'), encodedThree.end());
+		std::string incorrectThree = base64_decode(encodedThree);
 
 		// Add the strings into the current question
 		questions.at(i)->question = question;
@@ -101,7 +112,7 @@ size_t Quiz::readQuiz(char* data, size_t size, size_t nmemb, void* readData)
 		int shuffler = rand() % 4;
 
 		// Temporary vector used for copying the various strings into the actual questions vector
-		std::vector<std::wstring> temp = { correctAnswer, incorrectOne, incorrectTwo, incorrectThree };
+		std::vector<std::string> temp = { correctAnswer, incorrectOne, incorrectTwo, incorrectThree };
 
 		// Put the answers in the options array but in a shuffled order
 		questions.at(i)->options.push_back(temp.at(shuffler % 4));
@@ -160,7 +171,7 @@ void Quiz::selectCategory(int cat)
 {
 	//std::string url = quizString + std::to_string(cat) + "&type=multiple";
 	//std::cout << url << std::endl;
-	curl_easy_setopt(curl, CURLOPT_URL, (quizString + std::to_string(cat) + "&type=multiple").c_str());
+	curl_easy_setopt(curl, CURLOPT_URL, (quizString + std::to_string(cat) + "&type=multiple&encode=base64").c_str());
 }
 
 void Quiz::generateQuiz()
@@ -183,13 +194,13 @@ void Quiz::generateQuiz()
 	score = 0;
 }
 
-std::wstring Quiz::displayQuestion()
+std::string Quiz::displayQuestion()
 {
-	std::wstring ret = questions.at(currentQuestion)->question + L"\n";
-	ret += L"[1] " + questions.at(currentQuestion)->options.at(0) + L"\n";
-	ret += L"[2] " + questions.at(currentQuestion)->options.at(1) + L"\n";
-	ret += L"[3] " + questions.at(currentQuestion)->options.at(2) + L"\n";
-	ret += L"[4] " + questions.at(currentQuestion)->options.at(3) + L"\n";
+	std::string ret = questions.at(currentQuestion)->question + "\n";
+	ret += "[1] " + questions.at(currentQuestion)->options.at(0) + "\n";
+	ret += "[2] " + questions.at(currentQuestion)->options.at(1) + "\n";
+	ret += "[3] " + questions.at(currentQuestion)->options.at(2) + "\n";
+	ret += "[4] " + questions.at(currentQuestion)->options.at(3) + "\n";
 	return ret;
 }
 

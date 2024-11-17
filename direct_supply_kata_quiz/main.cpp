@@ -50,17 +50,17 @@ int main(int argc, char* args[])
 			break;
 
 		case 1:	// Quiz is currently ongoing
-			std::wcout << "Question " << quiz->currentQuestion + 1 << ":" << std::endl;
-			std::wcout << quiz->displayQuestion();
+			std::cout << "Question " << quiz->currentQuestion + 1 << ":" << std::endl;
+			std::cout << quiz->displayQuestion();
 			int answer;
 			while (scanf_s("%d", &answer) != 1 || answer < 1 || answer > 4) {
-				std::wcout << "Enter the number beside the answer to choose it" << std::endl;
+				std::cout << "Enter the number beside the answer to choose it" << std::endl;
 			}
 			if (quiz->checkAnswer(answer)) {
-				std::wcout << "Correct!" << std::endl << std::endl;
+				std::cout << "Correct!" << std::endl << std::endl;
 			}
 			else {
-				std::wcout << "Incorrect" << std::endl << std::endl;
+				std::cout << "Incorrect" << std::endl << std::endl;
 			}
 			if (quiz->currentQuestion == 10) {
 				state = 2;
@@ -68,21 +68,21 @@ int main(int argc, char* args[])
 			break;
 
 		case 2:	// Quiz is over
-			std::wcout << "Congratulations! You've completed the quiz! Your final score was " << quiz->getScore() << "!" << std::endl;
-			std::wcout << "Play again?" << std::endl;
-			std::wcout << "[1] Yeah!" << std::endl;
-			std::wcout << "[2] Nah" << std::endl;
+			std::cout << "Congratulations! You've completed the quiz! Your final score was " << quiz->getScore() << "!" << std::endl;
+			std::cout << "Play again?" << std::endl;
+			std::cout << "[1] Yeah!" << std::endl;
+			std::cout << "[2] Nah" << std::endl;
 
 			int response;
 			while (scanf_s("%d", &response) != 1 || response < 1 || response > 2) {
-				std::wcout << "Enter the number beside the answer to choose it" << std::endl;
+				std::cout << "Enter the number beside the answer to choose it" << std::endl;
 			}
-			std::wcout << std::endl;
+			std::cout << std::endl;
 			if (response == 1) {
 				state = 0;
 			}
 			else {
-				std::wcout << "Thanks for playing!" << std::endl;
+				std::cout << "Thanks for playing!" << std::endl;
 				exit(0);
 			}
 			break;
