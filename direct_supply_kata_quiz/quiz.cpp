@@ -78,6 +78,8 @@ size_t Quiz::readQuiz(char* data, size_t size, size_t nmemb, void* readData)
 		quizData.erase(0, questionStart + 12);	// Erases up to and including the opening quotation for the question title
 		int answerStart = quizData.find(",\"correct_answer\"");
 		std::string encodedQuestion(quizData.begin(), quizData.begin() + answerStart - 1);
+		//std::cout << "question " << i << encodedQuestion << std::endl;
+		std::string eacute = base64_decode("w6k=");
 		encodedQuestion.erase(std::remove(encodedQuestion.begin(), encodedQuestion.end(), '\\'), encodedQuestion.end());
 		std::string question = base64_decode(encodedQuestion);
 
