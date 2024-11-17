@@ -60,7 +60,7 @@ int main(int argc, char* args[])
 				std::cout << "Correct!" << std::endl << std::endl;
 			}
 			else {
-				std::cout << "Incorrect" << std::endl << std::endl;
+				std::cout << "Incorrect. The correct answer was [" << quiz->questions.at(quiz->currentQuestion - 1)->correctAnswer + 1 << "]." << std::endl << std::endl;
 			}
 			if (quiz->currentQuestion == 10) {
 				state = 2;
